@@ -59,11 +59,11 @@ async function http(url, headers = {}) {
 }
 
 // Cookie sesi inbox (dibuat per-request karena Worker stateless)
-function inboxCookie(email, ctxSuffix = '') {
+function inboxCookie(email, ctxSuffix = '', surlSuffix = '') {
   const [username, domain] = email.split('@');
   const parts = {
     inbox_ctx: encodeURIComponent(`${domain}/${username}/${ctxSuffix}`),
-    surl: `${domain}/${username}`,
+    surl: `${domain}/${username}${surlSuffix ? '/' + surlSuffix : ''}`,
     embx: encodeURIComponent(JSON.stringify([email])),
   };
   return Object.entries(parts).map(([k, v]) => `${k}=${v}`).join('; ');
@@ -340,16 +340,18 @@ async function readMessage(email, linkOrMsgId) {
   const url = link.startsWith(domain) ? `${BASE_URL}/${link}` : `${BASE_URL}/${domain}/${username}/${link}`;
 
   try {
-    const fetchPage = async (target) => {
-      const res = await http(target, { Cookie: inboxCookie(e, linkOrMsgId), Referer: `${BASE_URL}/inbox1/` });
+    const msgId = link.split('/').filter(Boolean).pop() || '';
+    const fetchPage = async (target, surlSuffix = '') => {
+      const res = await http(target, { Cookie: inboxCookie(e, linkOrMsgId, surlSuffix), Referer: `${BASE_URL}/inbox1/` });
       return res.status === 200 ? { $: load(await res.text()), status: 200 } : { $: null, status: res.status };
     };
+    const hasBody = (p) => p.$ && EmailParser.extractCleanBody(p.$).rawHtml;
 
-    // 1) halaman pesan langsung, 2) cadangan: endpoint inbox1 dengan cookie pesan terpilih
+    // 1) halaman pesan langsung, 2) cadangan: inbox1 dengan cookie ID pesan terpilih
     let page = await fetchPage(url);
-    if (!page.$ || !EmailParser.extractCleanBody(page.$).rawHtml) {
-      const alt = await fetchPage(`${BASE_URL}/inbox1/`);
-      if (alt.$ && EmailParser.extractCleanBody(alt.$).rawHtml) page = alt;
+    if (!hasBody(page) && msgId) {
+      const alt = await fetchPage(`${BASE_URL}/inbox1/`, msgId);
+      if (hasBody(alt)) page = alt;
     }
     if (!page.$) return respond('error', null, `Failed to load message (HTTP ${page.status})`, 'HTTP_ERROR');
 
@@ -380,6 +382,49 @@ async function readMessage(email, linkOrMsgId) {
   } catch (err) {
     return respond('error', null, `Network error reading message: ${err.message}`, 'NETWORK_ERROR');
   }
+}
+
+// Diagnostik: tampilkan struktur halaman pesan supaya selector bisa disesuaikan
+async function debugMessage(email, linkOrMsgId) {
+  const e = (email || '').trim().toLowerCase();
+  const [username, domain] = e.split('@');
+  const link = (linkOrMsgId || '').replace(/^\//, '');
+  const msgId = link.split('/').filter(Boolean).pop() || '';
+  const direct = link.startsWith(domain) ? `${BASE_URL}/${link}` : `${BASE_URL}/${domain}/${username}/${link}`;
+  const variants = [
+    { name: 'direct', url: direct, surl: '' },
+    { name: 'inbox1+id', url: `${BASE_URL}/inbox1/`, surl: msgId },
+  ];
+  const out = [];
+  for (const v of variants) {
+    try {
+      const res = await http(v.url, { Cookie: inboxCookie(e, linkOrMsgId, v.surl), Referer: `${BASE_URL}/inbox1/` });
+      const html = await res.text();
+      const $ = load(html);
+      const names = new Set();
+      $('[id],[class]').each((_, el) => {
+        const tag = el.tagName;
+        const id = $(el).attr('id');
+        const cls = ($(el).attr('class') || '').split(/\s+/).filter(Boolean);
+        if (id && /mess|mail|body|email|inbox/i.test(id)) names.add(`${tag}#${id}`);
+        cls.filter((c) => /mess|mail|body|email|inbox/i.test(c)).forEach((c) => names.add(`${tag}.${c}`));
+      });
+      const body = EmailParser.extractCleanBody($);
+      out.push({
+        variant: v.name,
+        url: v.url,
+        http: res.status,
+        html_length: html.length,
+        body_length: body.rawHtml.length,
+        body_preview: body.bodyText.slice(0, 200),
+        candidates: [...names].slice(0, 40),
+        head_text: ($('#mail-summary-head').text() || '').replace(/\s+/g, ' ').slice(0, 200),
+      });
+    } catch (err) {
+      out.push({ variant: v.name, error: err.message });
+    }
+  }
+  return respond('success', { email: e, link: linkOrMsgId, results: out });
 }
 
 // Worker tidak cocok jadi relay WebSocket -> pakai polling inbox sampai ada pesan masuk
@@ -456,6 +501,11 @@ export default {
         case '/api/message': {
           if (!q.get('email') || !q.get('link')) return missing('Email and message link parameters are required', 'MISSING_PARAMS');
           return json(await readMessage(q.get('email'), q.get('link')));
+        }
+
+        case '/api/debug': {
+          if (!q.get('email') || !q.get('link')) return missing('Email and message link parameters are required', 'MISSING_PARAMS');
+          return json(await debugMessage(q.get('email'), q.get('link')));
         }
 
         case '/api/listen': {
