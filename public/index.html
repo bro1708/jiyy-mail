@@ -346,7 +346,7 @@
           </div>
           <div class="viewer-body" id="viewerBody">
             <div class="sk"></div>
-            <iframe id="viewer" sandbox="" referrerpolicy="no-referrer" title="Isi pesan"></iframe>
+            <iframe id="viewer" sandbox="allow-popups allow-popups-to-escape-sandbox" referrerpolicy="no-referrer" title="Isi pesan"></iframe>
           </div>
         </div>
       </div>
@@ -493,14 +493,48 @@ function setCodes(otp, link) {
 function openViewer() {
   $('viewerWrap').classList.add('open');
 }
+/* ubah URL teks biasa jadi tautan yang bisa diklik */
+function linkify(html) {
+  const dom = new DOMParser().parseFromString('<body>' + html + '</body>', 'text/html');
+  const walker = document.createTreeWalker(dom.body, NodeFilter.SHOW_TEXT);
+  const nodes = [];
+  while (walker.nextNode()) nodes.push(walker.currentNode);
+  nodes.forEach((n) => {
+    if (n.parentElement.closest('a')) return;
+    const text = n.nodeValue;
+    const re = /https?:\/\/[^\s<>"')\]]+/gi;
+    if (!re.test(text)) return;
+    re.lastIndex = 0;
+    const frag = dom.createDocumentFragment();
+    let last = 0, m;
+    while ((m = re.exec(text))) {
+      const url = m[0].replace(/[.,;:!?]+$/, '');
+      frag.append(text.slice(last, m.index));
+      const a = dom.createElement('a');
+      a.href = url; a.textContent = url;
+      frag.append(a);
+      last = m.index + url.length;
+      re.lastIndex = last;
+    }
+    frag.append(text.slice(last));
+    n.replaceWith(frag);
+  });
+  return dom.body.innerHTML;
+}
+
+let readyTimer;
 function showBody(html) {
-  const doc = '<base target="_blank"><style>body{margin:14px;font:14px/1.55 system-ui,sans-serif;color:#181815}</style>' + html;
+  const doc = '<base target="_blank"><style>body{margin:14px;font:14px/1.55 system-ui,sans-serif;color:#181815;word-break:break-word}a{color:#C2410C}</style>' + linkify(html);
   const v = $('viewer');
+  const body = $('viewerBody');
   openViewer();
-  if (v.dataset.last === doc) return;
+  if (v.dataset.last === doc) { body.classList.add('ready'); return; } // isi sama, nggak perlu muat ulang
   v.dataset.last = doc;
-  $('viewerBody').classList.remove('ready');
-  v.onload = () => $('viewerBody').classList.add('ready');
+  body.classList.remove('ready');
+  clearTimeout(readyTimer);
+  const done = () => { clearTimeout(readyTimer); body.classList.add('ready'); };
+  v.onload = done;
+  readyTimer = setTimeout(done, 2500); // jaga-jaga kalau onload tidak terpanggil
   v.srcdoc = doc;
 }
 function closeViewer() {
@@ -591,7 +625,7 @@ async function openMsg(m) {
   $('viewerBody').classList.remove('ready');
   const r = await api('/api/message?email=' + encodeURIComponent(state.email) + '&link=' + encodeURIComponent(m.link));
   if (state.active !== m.link) return;
-  if (r.status !== 'success') { toast(r.message || 'Gagal membuka pesan'); return; }
+  if (r.status !== 'success') { $('viewerBody').classList.add('ready'); toast(r.message || 'Gagal membuka pesan'); return; }
   showBody(r.data.body || '<p>(kosong)</p>');
   setCodes(r.data.otp, r.data.verification_link);
 }
