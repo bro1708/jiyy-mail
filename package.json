@@ -1,16 +1,19 @@
 {
-  "name": "jiyy-mail",
-  "version": "1.0.0",
+  "name": "tempmail-generator-email",
+  "version": "3.0.0",
   "private": true,
-  "type": "module",
+  "main": "src/worker.js",
   "scripts": {
     "dev": "wrangler dev",
     "deploy": "wrangler deploy",
-    "db:init": "wrangler d1 execute jiyy-mail --remote --file=./schema.sql",
-    "db:init:local": "wrangler d1 execute jiyy-mail --local --file=./schema.sql"
+    "cli": "node emailgen.js"
   },
   "dependencies": {
-    "postal-mime": "^2.4.3"
+    "axios": "^1.7.0",
+    "cheerio": "^1.0.0",
+    "cors": "^2.8.5",
+    "express": "^4.19.0",
+    "ws": "^8.18.0"
   },
   "devDependencies": {
     "wrangler": "^4.0.0"
