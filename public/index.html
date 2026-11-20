@@ -2,155 +2,709 @@
 <html lang="id">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>TempMail Dashboard</title>
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<meta name="theme-color" content="#131313">
+<meta name="color-scheme" content="dark">
+<title>tempmail</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
 <style>
-  :root{--bg:#0d1117;--card:#161b22;--line:#30363d;--txt:#e6edf3;--mut:#8b949e;--acc:#a371f7;--ok:#3fb950;--info:#58a6ff}
-  *{box-sizing:border-box}
-  body{margin:0;background:var(--bg);color:var(--txt);font:15px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
-  .wrap{max-width:900px;margin:0 auto;padding:20px 16px 60px}
-  h1{font-size:22px;margin:8px 0 2px}
-  .sub{color:var(--mut);font-size:13px;margin-bottom:18px}
-  .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:14px}
-  .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-  input,select,button{background:#0d1117;color:var(--txt);border:1px solid var(--line);border-radius:8px;padding:9px 12px;font:inherit}
-  input{flex:1;min-width:120px}
-  button{cursor:pointer}
-  button:hover{border-color:var(--acc)}
-  button.primary{background:var(--acc);border-color:var(--acc);color:#fff;font-weight:600}
-  .email{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:17px;color:var(--acc);word-break:break-all}
-  .badge{display:inline-block;padding:2px 8px;border-radius:99px;font-size:12px;border:1px solid var(--line);color:var(--mut)}
-  .otp{font-family:ui-monospace,monospace;font-size:26px;letter-spacing:3px;color:var(--ok);font-weight:700}
-  .msg{padding:10px 12px;border:1px solid var(--line);border-radius:8px;margin-top:8px;cursor:pointer}
-  .msg:hover{border-color:var(--info)}
-  .msg b{display:block}
-  .msg small{color:var(--mut)}
-  iframe{width:100%;height:420px;border:1px solid var(--line);border-radius:8px;background:#fff;margin-top:10px}
-  a{color:var(--info);word-break:break-all}
-  .hide{display:none}
-  .mut{color:var(--mut)}
+  :root{
+    color-scheme:dark;
+    --bg:#131313;
+    --glass:rgba(255,255,255,.04);
+    --field:rgba(0,0,0,.28);
+    --edge:rgba(255,255,255,.09);
+    --edge-hi:rgba(255,255,255,.24);
+    --txt:#EDEDED;
+    --mute:#8A8A8A;
+    --accent:#FF6B2C;
+    --r:6px;
+    --ease:cubic-bezier(.2,.7,.2,1);
+    --sans:"Instrument Sans",ui-sans-serif,system-ui,-apple-system,"Segoe UI",sans-serif;
+    --mono:"JetBrains Mono",ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;
+  }
+
+  *{
+    box-sizing:border-box;margin:0;
+    -webkit-tap-highlight-color:transparent;
+    scrollbar-width:none;
+  }
+  *::-webkit-scrollbar{display:none}
+  [hidden]{display:none !important}
+
+  html{-webkit-text-size-adjust:100%;background:var(--bg)}
+  body{
+    min-height:100vh;
+    background:var(--bg);color:var(--txt);
+    font:400 15px/1.5 var(--sans);
+    -webkit-user-select:none;user-select:none;
+    -webkit-touch-callout:none;
+    touch-action:pan-x pan-y;
+    overscroll-behavior:none;
+  }
+  input,select{-webkit-user-select:text;user-select:text}
+  :focus{outline:none}
+  :focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+  /* ---------- backdrop (memberi objek di belakang kaca) ---------- */
+  body::before,body::after{
+    content:"";position:fixed;z-index:-1;border-radius:50%;
+    filter:blur(90px);pointer-events:none;will-change:transform;
+  }
+  body::before{width:46vmax;height:46vmax;left:-14vmax;top:-18vmax;background:var(--accent);opacity:.22;animation:driftA 22s ease-in-out infinite alternate}
+  body::after{width:42vmax;height:42vmax;right:-16vmax;bottom:-20vmax;background:#3A4B73;opacity:.34;animation:driftB 26s ease-in-out infinite alternate}
+  @keyframes driftA{to{transform:translate(18vmax,12vmax) scale(1.15)}}
+  @keyframes driftB{to{transform:translate(-16vmax,-10vmax) scale(1.1)}}
+
+  /* ---------- layout ---------- */
+  .shell{max-width:1040px;margin:0 auto;padding:20px 16px 56px}
+  .top{
+    display:flex;justify-content:space-between;align-items:center;gap:12px;
+    padding-bottom:14px;margin-bottom:20px;border-bottom:1px solid var(--edge);
+  }
+  .brand{display:flex;align-items:baseline;gap:10px;min-width:0}
+  .brand strong{font-size:18px;font-weight:600;letter-spacing:-.02em}
+  .brand span{font:400 12px var(--mono);color:var(--mute);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .live{display:flex;align-items:center;gap:8px;font:500 12px var(--mono);color:var(--mute);white-space:nowrap;transition:color .3s}
+  .live i{position:relative;width:7px;height:7px;background:#4A4A4A;display:block;transition:background .3s}
+  .live.on{color:var(--txt)}
+  .live.on i{background:var(--accent)}
+  .live.on i::after{content:"";position:absolute;inset:0;background:var(--accent);animation:ping 1.6s var(--ease) infinite}
+  @keyframes ping{to{transform:scale(3.2);opacity:0}}
+
+  .grid{display:grid;grid-template-columns:320px minmax(0,1fr);gap:20px;align-items:start}
+  .stack{display:grid;gap:20px;min-width:0}
+  @media (max-width:820px){.grid{grid-template-columns:minmax(0,1fr)}}
+
+  /* ---------- entrance ---------- */
+  @keyframes rise{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+  .reveal{opacity:0;animation:rise .6s var(--ease) forwards;animation-delay:calc(var(--d,0) * 90ms)}
+
+  /* ---------- glass panel ---------- */
+  .panel{
+    position:relative;overflow:hidden;
+    background:var(--glass);
+    -webkit-backdrop-filter:blur(20px);backdrop-filter:blur(20px);
+    border:1px solid var(--edge);border-radius:var(--r);
+    box-shadow:inset 0 1px 0 rgba(255,255,255,.05);
+  }
+  .panel-h{
+    display:flex;justify-content:space-between;align-items:center;gap:12px;min-height:40px;
+    padding:0 14px;border-bottom:1px solid var(--edge);
+    font:500 11px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--mute);
+  }
+  .panel-b{padding:14px}
+
+  /* ---------- progress bar ---------- */
+  .bar{position:relative;height:2px;background:rgba(255,255,255,.06);overflow:hidden}
+  .bar i{position:absolute;inset:0;background:var(--accent);transform-origin:left;transform:scaleX(0)}
+  .bar.busy i{animation:pulse .7s ease-in-out infinite alternate}
+  @keyframes pulse{from{opacity:.25}to{opacity:1}}
+
+  /* ---------- form ---------- */
+  .field{display:grid;gap:6px;margin-bottom:12px}
+  .field > span{font:500 11px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--mute)}
+  input,select{
+    width:100%;height:42px;padding:0 12px;
+    background:var(--field);color:var(--txt);
+    border:1px solid var(--edge);border-radius:var(--r);
+    font:400 16px var(--sans);
+    transition:border-color .2s,background .2s;
+    -webkit-appearance:none;appearance:none;
+  }
+  input::placeholder{color:#5E5E5E}
+  input:hover,select:hover{border-color:var(--edge-hi)}
+  input:focus,select:focus{border-color:var(--accent);background:rgba(0,0,0,.4)}
+  option{background:#1B1B1B;color:var(--txt)}
+  .select{position:relative}
+  .select select{padding-right:36px;cursor:pointer}
+  .select svg{position:absolute;right:12px;top:13px;pointer-events:none;color:var(--mute)}
+  .sep{border:0;border-top:1px solid var(--edge);margin:16px 0}
+  .row{display:flex;gap:8px}
+  .row input{flex:1;min-width:0}
+
+  /* ---------- buttons ---------- */
+  .btn{
+    position:relative;overflow:hidden;isolation:isolate;
+    display:inline-flex;align-items:center;justify-content:center;gap:8px;flex:none;
+    height:42px;padding:0 16px;
+    background:rgba(255,255,255,.04);color:var(--txt);
+    border:1px solid var(--edge-hi);border-radius:var(--r);
+    font:500 14px var(--sans);cursor:pointer;text-decoration:none;
+    transition:background .2s,color .2s,border-color .2s,transform .12s var(--ease);
+  }
+  .btn:hover{background:rgba(255,255,255,.1)}
+  .btn:active{transform:scale(.96)}
+  .btn:disabled{opacity:.6;cursor:progress}
+  .btn.primary{background:var(--txt);color:var(--bg);border-color:var(--txt)}
+  .btn.primary:hover{background:var(--accent);border-color:var(--accent)}
+  .btn.block{width:100%}
+  .btn.icon{width:36px;height:36px;padding:0;border-color:var(--edge)}
+  .btn.icon:hover{border-color:var(--edge-hi)}
+  .btn.ghost{border-color:transparent;background:transparent}
+  .i{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.75;stroke-linecap:round;stroke-linejoin:round;flex:none}
+
+  /* shimmer: pita solid tipis yang menyapu, tanpa gradient */
+  .btn.primary::after,.sk::after{
+    content:"";position:absolute;top:-10%;bottom:-10%;left:-60%;width:36%;
+    background:rgba(255,255,255,.35);transform:skewX(-20deg);filter:blur(10px);
+    pointer-events:none;z-index:-1;
+  }
+  .btn.primary::after{opacity:0}
+  .btn.primary:hover::after{opacity:1;animation:sweep .9s var(--ease)}
+  @keyframes sweep{to{left:130%}}
+
+  /* ripple klik */
+  .ripple{
+    position:absolute;border-radius:50%;pointer-events:none;
+    background:rgba(255,255,255,.28);transform:scale(0);animation:ripple .55s var(--ease) forwards;
+  }
+  .btn.primary .ripple{background:rgba(19,19,19,.25)}
+  @keyframes ripple{to{transform:scale(1);opacity:0}}
+
+  /* loading */
+  .sp{display:none}
+  .loading .ic{display:none}
+  .loading .sp,.spin .i{display:block;animation:spin .8s linear infinite}
+  @keyframes spin{to{transform:rotate(360deg)}}
+
+  /* ---------- riwayat ---------- */
+  .hist{display:grid}
+  .hist-item{
+    position:relative;overflow:hidden;display:flex;align-items:center;justify-content:space-between;gap:8px;
+    padding:0 6px 0 14px;min-height:40px;cursor:pointer;
+    border-bottom:1px solid var(--edge);transition:background .2s;
+  }
+  .hist-item:last-child{border-bottom:0}
+  .hist-item:hover{background:rgba(255,255,255,.05)}
+  .hist-item span{font:400 13px var(--mono);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .hist-item.on span{color:var(--accent)}
+  .rm{position:relative;z-index:1;width:28px;height:28px;display:grid;place-items:center;flex:none;background:transparent;border:0;border-radius:var(--r);color:var(--mute);cursor:pointer;transition:color .2s,background .2s}
+  .rm:hover{color:var(--txt);background:rgba(255,255,255,.1)}
+
+  /* ---------- inbox ---------- */
+  .addr-row{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:14px;border-bottom:1px solid var(--edge);animation:rise .4s var(--ease)}
+  .addr{font:500 16px/1.35 var(--mono);overflow-wrap:anywhere;min-width:0}
+  .actions{display:flex;gap:6px;flex:none}
+
+  .code{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 14px;border-bottom:1px solid var(--edge);animation:rise .4s var(--ease)}
+  .code-main{min-width:0}
+  .code-main small{display:block;font:500 11px var(--mono);letter-spacing:.08em;text-transform:uppercase;color:var(--mute)}
+  .otp{font:500 30px/1.2 var(--mono);letter-spacing:.14em;color:var(--accent);display:inline-block}
+  .otp.pop{animation:pop .5s var(--ease)}
+  @keyframes pop{0%{transform:scale(.9);opacity:.3}60%{transform:scale(1.06)}100%{transform:none;opacity:1}}
+  .vlink{font:400 13px var(--mono);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
+
+  .list{max-height:320px;overflow-y:auto}
+  .msg{
+    position:relative;overflow:hidden;display:block;width:100%;text-align:left;padding:12px 14px;
+    background:transparent;color:inherit;font:inherit;cursor:pointer;
+    border:0;border-bottom:1px solid var(--edge);border-left:2px solid transparent;
+    transition:background .2s,border-color .2s,padding .2s var(--ease);
+  }
+  .msg.enter{animation:rise .45s var(--ease) backwards;animation-delay:calc(var(--k,0) * 60ms)}
+  .msg:hover{background:rgba(255,255,255,.05)}
+  .msg.active{background:rgba(255,255,255,.09);border-left-color:var(--accent);padding-left:18px}
+  .msg b{display:block;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .msg .meta{display:block;font:400 12px var(--mono);color:var(--mute);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .empty{padding:28px 14px;color:var(--mute);font-size:14px;animation:rise .4s var(--ease)}
+
+  /* skeleton + shimmer */
+  .sk{position:relative;overflow:hidden;background:rgba(255,255,255,.06);border-radius:3px}
+  .sk::after{opacity:1;animation:sweep 1.4s ease-in-out infinite;background:rgba(255,255,255,.08);z-index:0}
+  .sk-row{padding:14px;border-bottom:1px solid var(--edge);display:grid;gap:8px}
+  .sk-row .sk:nth-child(1){height:14px;width:55%}
+  .sk-row .sk:nth-child(2){height:10px;width:35%}
+
+  /* viewer */
+  .viewer{display:grid;grid-template-rows:0fr;transition:grid-template-rows .4s var(--ease)}
+  .viewer.open{grid-template-rows:1fr}
+  .viewer-in{min-height:0;overflow:hidden}
+  .viewer.open .viewer-in{border-top:1px solid var(--edge)}
+  .viewer .panel-h{padding-right:8px}
+  .viewer-body{position:relative;height:380px}
+  .viewer-body iframe{display:block;width:100%;height:100%;border:0;background:#fff;opacity:0;transition:opacity .35s}
+  .viewer-body.ready iframe{opacity:1}
+  .viewer-body .sk{position:absolute;inset:14px;border-radius:var(--r);transition:opacity .25s}
+  .viewer-body.ready .sk{opacity:0;pointer-events:none}
+
+  /* ---------- toast ---------- */
+  .toast{
+    position:fixed;left:50%;bottom:20px;z-index:10;
+    display:flex;align-items:center;gap:8px;padding:10px 14px;
+    background:rgba(30,30,30,.75);-webkit-backdrop-filter:blur(16px);backdrop-filter:blur(16px);
+    border:1px solid var(--edge-hi);border-radius:var(--r);
+    font:500 13px var(--sans);color:var(--txt);
+    opacity:0;transform:translate(-50%,12px) scale(.96);pointer-events:none;
+    transition:opacity .2s,transform .25s var(--ease);
+  }
+  .toast.show{opacity:1;transform:translate(-50%,0) scale(1)}
+  .toast .i{color:var(--accent)}
+
+  @media (prefers-reduced-motion:reduce){
+    *,*::before,*::after{animation-duration:.01ms !important;animation-iteration-count:1 !important;transition-duration:.01ms !important}
+    .reveal{opacity:1}
+  }
 </style>
 </head>
 <body>
-<div class="wrap">
-  <h1>📬 TempMail Dashboard</h1>
-  <div class="sub">Powered by generator.email · inbox auto-refresh tiap 5 detik</div>
 
-  <div class="card">
-    <div class="row">
-      <input id="user" placeholder="username (kosongkan = random)">
-      <select id="domain"><option value="">random domain</option></select>
-      <button class="primary" id="gen">Generate</button>
-    </div>
-    <div class="row" style="margin-top:12px">
-      <input id="manual" placeholder="atau masukkan email yang sudah ada">
-      <button id="use">Pakai</button>
-    </div>
-  </div>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-copy" viewBox="0 0 24 24"><rect width="14" height="14" x="8" y="8" rx="2" ry="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/></symbol>
+  <symbol id="i-refresh" viewBox="0 0 24 24"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></symbol>
+  <symbol id="i-link" viewBox="0 0 24 24"><path d="M15 3h6v6"/><path d="M10 14 21 3"/><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M5 12h14"/><path d="M12 5v14"/></symbol>
+  <symbol id="i-chevron" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></symbol>
+  <symbol id="i-loader" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></symbol>
+</svg>
 
-  <div class="card hide" id="current">
-    <div class="row" style="justify-content:space-between">
-      <div class="email" id="email"></div>
-      <div class="row">
-        <button id="copy">Copy</button>
-        <button id="refresh">Refresh</button>
-        <span class="badge" id="count">0 pesan</span>
+<div class="shell">
+  <header class="top reveal" style="--d:0">
+    <div class="brand"><strong>tempmail</strong><span>via generator.email</span></div>
+    <div class="live" id="live"><i></i><span id="liveText">Idle</span></div>
+  </header>
+
+  <div class="grid">
+    <div class="stack">
+      <!-- Buat alamat -->
+      <section class="panel reveal" style="--d:1">
+        <div class="panel-h"><span>Alamat</span></div>
+        <div class="panel-b">
+          <label class="field">
+            <span>Username</span>
+            <input id="user" placeholder="kosongkan untuk acak" autocomplete="off" autocapitalize="off" spellcheck="false">
+          </label>
+          <label class="field">
+            <span>Domain</span>
+            <div class="select">
+              <select id="domain"><option value="">Acak</option></select>
+              <svg class="i"><use href="#i-chevron"/></svg>
+            </div>
+          </label>
+          <button class="btn primary block" id="gen" type="button">
+            <svg class="i ic"><use href="#i-plus"/></svg>
+            <svg class="i sp"><use href="#i-loader"/></svg>
+            <span id="genLabel">Buat alamat</span>
+          </button>
+
+          <hr class="sep">
+
+          <label class="field" style="margin-bottom:0">
+            <span>Pakai alamat yang ada</span>
+            <div class="row">
+              <input id="manual" type="email" placeholder="nama@domain.com" autocomplete="off" autocapitalize="off" spellcheck="false">
+              <button class="btn" id="use" type="button">Pakai</button>
+            </div>
+          </label>
+        </div>
+      </section>
+
+      <!-- Riwayat -->
+      <section class="panel reveal" style="--d:2" id="histWrap" hidden>
+        <div class="panel-h"><span>Riwayat</span></div>
+        <div class="hist" id="hist"></div>
+      </section>
+    </div>
+
+    <!-- Inbox -->
+    <section class="panel reveal" style="--d:2">
+      <div class="panel-h"><span>Inbox</span><span id="count">0 pesan</span></div>
+      <div class="bar" id="bar"><i></i></div>
+
+      <div class="addr-row" id="addrRow" hidden>
+        <div class="addr" id="email"></div>
+        <div class="actions">
+          <button class="btn icon" id="copy" type="button" aria-label="Salin alamat" title="Salin alamat"><svg class="i"><use href="#i-copy"/></svg></button>
+          <button class="btn icon" id="refresh" type="button" aria-label="Muat ulang" title="Muat ulang"><svg class="i"><use href="#i-refresh"/></svg></button>
+        </div>
       </div>
-    </div>
-    <div id="otpBox" class="hide" style="margin-top:12px">
-      <div class="mut">OTP terdeteksi</div>
-      <span class="otp" id="otp"></span> <button id="copyOtp">Copy OTP</button>
-    </div>
-    <div id="linkBox" class="hide" style="margin-top:12px">
-      <div class="mut">Link verifikasi</div>
-      <a id="vlink" target="_blank" rel="noopener noreferrer"></a>
-    </div>
-  </div>
 
-  <div class="card hide" id="inboxCard">
-    <b>Inbox</b>
-    <div id="list"><span class="mut">Belum ada pesan…</span></div>
-    <iframe id="viewer" class="hide" sandbox="" referrerpolicy="no-referrer"></iframe>
+      <div class="code" id="otpBox" hidden>
+        <div class="code-main"><small>OTP</small><div class="otp" id="otp"></div></div>
+        <button class="btn icon" id="copyOtp" type="button" aria-label="Salin OTP" title="Salin OTP"><svg class="i"><use href="#i-copy"/></svg></button>
+      </div>
+
+      <div class="code" id="linkBox" hidden>
+        <div class="code-main"><small>Link verifikasi</small><span class="vlink" id="vlink"></span></div>
+        <div class="actions">
+          <a class="btn icon" id="openLink" target="_blank" rel="noopener noreferrer" aria-label="Buka link" title="Buka link"><svg class="i"><use href="#i-link"/></svg></a>
+          <button class="btn icon" id="copyLink" type="button" aria-label="Salin link" title="Salin link"><svg class="i"><use href="#i-copy"/></svg></button>
+        </div>
+      </div>
+
+      <div class="list" id="list"><p class="empty">Belum ada alamat aktif. Buat alamat baru atau pakai alamat yang sudah ada.</p></div>
+
+      <div class="viewer" id="viewerWrap">
+        <div class="viewer-in">
+          <div class="panel-h">
+            <span>Isi pesan</span>
+            <button class="btn icon ghost" id="closeViewer" type="button" aria-label="Tutup" title="Tutup"><svg class="i"><use href="#i-x"/></svg></button>
+          </div>
+          <div class="viewer-body" id="viewerBody">
+            <div class="sk"></div>
+            <iframe id="viewer" sandbox="" referrerpolicy="no-referrer" title="Isi pesan"></iframe>
+          </div>
+        </div>
+      </div>
+    </section>
   </div>
 </div>
 
+<div class="toast" id="toast"><svg class="i"><use href="#i-check"/></svg><span id="toastText">Tersalin</span></div>
+
 <script>
+/* ---------- helpers ---------- */
 const $ = (id) => document.getElementById(id);
-let email = '', timer = null;
-
-const api = async (path) => (await fetch(path)).json();
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+const api = async (path) => {
+  try { return await (await fetch(path)).json(); }
+  catch { return { status: 'error', message: 'Koneksi gagal' }; }
+};
 
-async function loadDomains() {
+const POLL_MS = 5000;
+const STORE_KEY = 'tempmail:v1';
+const state = {
+  email: '', loop: 0, busy: false,
+  messages: [], sig: '', seen: new Set(),
+  active: '', pendingOpen: '', link: '', otp: '',
+  history: [],
+};
+
+/* ---------- persistence ---------- */
+function save() {
   try {
-    const r = await api('/api/domains');
-    if (r.status === 'success') {
-      r.data.domains.forEach((d) => {
-        const o = document.createElement('option');
-        o.value = d; o.textContent = '@' + d;
-        $('domain').appendChild(o);
-      });
-    }
+    localStorage.setItem(STORE_KEY, JSON.stringify({
+      email: state.email,
+      active: state.active,
+      history: state.history,
+      user: $('user').value,
+      domain: $('domain').value,
+    }));
   } catch {}
 }
+function load() {
+  try { return JSON.parse(localStorage.getItem(STORE_KEY)) || {}; }
+  catch { return {}; }
+}
 
-function setEmail(e) {
-  email = e;
-  $('email').textContent = e;
-  $('current').classList.remove('hide');
-  $('inboxCard').classList.remove('hide');
-  $('viewer').classList.add('hide');
-  $('list').innerHTML = '<span class="mut">Menunggu pesan…</span>';
-  clearInterval(timer);
-  refresh();
-  timer = setInterval(refresh, 5000);
+/* ---------- zoom lock ---------- */
+['gesturestart', 'gesturechange', 'gestureend'].forEach((t) =>
+  document.addEventListener(t, (e) => e.preventDefault()));
+document.addEventListener('wheel', (e) => { if (e.ctrlKey) e.preventDefault(); }, { passive: false });
+document.addEventListener('keydown', (e) => {
+  if ((e.ctrlKey || e.metaKey) && ['+', '-', '=', '0'].includes(e.key)) e.preventDefault();
+});
+
+/* ---------- ripple klik ---------- */
+document.addEventListener('pointerdown', (e) => {
+  const t = e.target.closest('.btn, .msg, .hist-item');
+  if (!t || t.disabled) return;
+  const r = t.getBoundingClientRect();
+  const s = Math.max(r.width, r.height) * 2.2;
+  const el = document.createElement('span');
+  el.className = 'ripple';
+  el.style.cssText = `width:${s}px;height:${s}px;left:${e.clientX - r.left - s / 2}px;top:${e.clientY - r.top - s / 2}px`;
+  t.appendChild(el);
+  el.addEventListener('animationend', () => el.remove());
+});
+
+/* ---------- toast & clipboard ---------- */
+let toastTimer;
+function toast(text) {
+  $('toastText').textContent = text;
+  $('toast').classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => $('toast').classList.remove('show'), 1500);
+}
+
+async function copy(text, label) {
+  if (!text) return;
+  try {
+    await navigator.clipboard.writeText(text);
+  } catch {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.cssText = 'position:fixed;opacity:0;user-select:text;-webkit-user-select:text';
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand('copy'); } catch {}
+    ta.remove();
+  }
+  toast(label + ' tersalin');
+}
+
+/* ---------- progress bar (hitung mundur ke refresh berikutnya) ---------- */
+function runBar() {
+  const i = $('bar').firstElementChild;
+  i.style.transition = 'none';
+  i.style.transform = 'scaleX(0)';
+  void i.offsetWidth;
+  i.style.transition = `transform ${POLL_MS}ms linear`;
+  i.style.transform = 'scaleX(1)';
+}
+function resetBar() {
+  const i = $('bar').firstElementChild;
+  i.style.transition = 'none';
+  i.style.transform = 'scaleX(0)';
+}
+
+/* ---------- domains ---------- */
+async function loadDomains(wanted) {
+  const r = await api('/api/domains');
+  if (r.status === 'success') {
+    r.data.domains.forEach((d) => {
+      const o = document.createElement('option');
+      o.value = d;
+      o.textContent = '@' + d;
+      $('domain').appendChild(o);
+    });
+  }
+  if (wanted) $('domain').value = wanted;
+}
+
+/* ---------- OTP & link ---------- */
+function setCodes(otp, link) {
+  $('otpBox').hidden = !otp;
+  if (otp) {
+    if (otp !== state.otp) {
+      const el = $('otp');
+      el.textContent = otp;
+      el.classList.remove('pop');
+      void el.offsetWidth;
+      el.classList.add('pop');
+    }
+    state.otp = otp;
+  } else state.otp = '';
+
+  $('linkBox').hidden = !link;
+  if (link) {
+    state.link = link;
+    $('vlink').textContent = link;
+    $('openLink').href = link;
+  }
+}
+
+/* ---------- viewer ---------- */
+function openViewer() {
+  $('viewerWrap').classList.add('open');
+}
+function showBody(html) {
+  const doc = '<base target="_blank"><style>body{margin:14px;font:14px/1.55 system-ui,sans-serif;color:#181815}</style>' + html;
+  const v = $('viewer');
+  openViewer();
+  if (v.dataset.last === doc) return;
+  v.dataset.last = doc;
+  $('viewerBody').classList.remove('ready');
+  v.onload = () => $('viewerBody').classList.add('ready');
+  v.srcdoc = doc;
+}
+function closeViewer() {
+  $('viewerWrap').classList.remove('open');
+  $('viewerBody').classList.remove('ready');
+  $('viewer').dataset.last = '';
+  state.active = '';
+  markActive();
+  save();
+}
+
+/* ---------- inbox ---------- */
+function markActive() {
+  document.querySelectorAll('#list .msg').forEach((el) =>
+    el.classList.toggle('active', state.messages[el.dataset.i]?.link === state.active));
+}
+
+function skeleton() {
+  $('list').innerHTML = [1, 2, 3].map(() => '<div class="sk-row"><div class="sk"></div><div class="sk"></div></div>').join('');
+}
+
+function renderList() {
+  const sig = JSON.stringify(state.messages.map((m) => [m.link, m.subject, m.date]));
+  if (sig === state.sig && $('list').querySelector('.msg')) { markActive(); return; }
+  state.sig = sig;
+  let k = 0;
+  $('list').innerHTML = state.messages.map((m, i) => {
+    const fresh = !state.seen.has(m.link + '|' + m.subject);
+    state.seen.add(m.link + '|' + m.subject);
+    return `<button type="button" class="msg${fresh ? ' enter' : ''}" style="--k:${fresh ? k++ : 0}" data-i="${i}">` +
+      `<b>${esc(m.subject || '(tanpa subjek)')}</b>` +
+      `<span class="meta">${esc(m.from)}${m.date ? ' · ' + esc(m.date) : ''}</span></button>`;
+  }).join('');
+  markActive();
 }
 
 async function refresh() {
-  if (!email) return;
-  const r = await api('/api/inbox?email=' + encodeURIComponent(email));
-  if (r.status !== 'success') { $('list').innerHTML = '<span class="mut">' + esc(r.message || 'Error') + '</span>'; return; }
-  const d = r.data;
-  $('count').textContent = d.total_messages + ' pesan';
+  if (!state.email || state.busy) return;
+  state.busy = true;
+  $('refresh').classList.add('spin');
+  $('bar').classList.add('busy');
+  resetBar();
+  const first = !$('list').querySelector('.msg') && !state.sig;
+  if (first && !state.messages.length) skeleton();
 
-  $('otpBox').classList.toggle('hide', !d.otp);
-  if (d.otp) $('otp').textContent = d.otp;
-  $('linkBox').classList.toggle('hide', !d.verification_link);
-  if (d.verification_link) { $('vlink').href = d.verification_link; $('vlink').textContent = d.verification_link; }
+  const email = state.email;
+  const r = await api('/api/inbox?email=' + encodeURIComponent(email));
+
+  state.busy = false;
+  $('refresh').classList.remove('spin');
+  $('bar').classList.remove('busy');
+  if (email !== state.email) return; // alamat sudah diganti saat menunggu
+
+  if (r.status !== 'success') {
+    $('list').innerHTML = `<p class="empty">${esc(r.message || 'Terjadi kesalahan')}</p>`;
+    state.sig = '';
+    return;
+  }
+
+  const d = r.data;
+  state.messages = d.messages;
+  $('count').textContent = d.total_messages + ' pesan';
+  setCodes(d.otp, d.verification_link);
 
   if (d.messages.length) {
-    $('list').innerHTML = d.messages.map((m, i) =>
-      `<div class="msg" data-i="${i}"><b>${esc(m.subject || '(tanpa subjek)')}</b><small>${esc(m.from)} · ${esc(m.date)}</small></div>`
-    ).join('');
-    document.querySelectorAll('.msg').forEach((el) => el.onclick = () => openMsg(d.messages[el.dataset.i]));
+    renderList();
+    if (state.pendingOpen) {
+      const m = d.messages.find((x) => x.link === state.pendingOpen);
+      state.pendingOpen = '';
+      if (m) openMsg(m);
+    }
+  } else if (d.total_messages > 0 && d.body) {
+    // generator.email kadang langsung menampilkan email terbaru tanpa daftar pesan
+    state.sig = '';
+    $('list').innerHTML = '<p class="empty">Email terbaru</p>';
+    showBody(d.body);
+  } else {
+    state.sig = '';
+    $('list').innerHTML = '<p class="empty">Menunggu pesan masuk…</p>';
   }
 }
 
 async function openMsg(m) {
-  const r = await api('/api/message?email=' + encodeURIComponent(email) + '&link=' + encodeURIComponent(m.link));
-  if (r.status !== 'success') return alert(r.message || 'Gagal membuka pesan');
-  const v = $('viewer');
-  v.classList.remove('hide');
-  v.srcdoc = '<base target="_blank">' + (r.data.body || '<p>(kosong)</p>');
-  if (r.data.otp) { $('otpBox').classList.remove('hide'); $('otp').textContent = r.data.otp; }
-  if (r.data.verification_link) { $('linkBox').classList.remove('hide'); $('vlink').href = r.data.verification_link; $('vlink').textContent = r.data.verification_link; }
+  state.active = m.link;
+  markActive();
+  save();
+  openViewer();
+  $('viewerBody').classList.remove('ready');
+  const r = await api('/api/message?email=' + encodeURIComponent(state.email) + '&link=' + encodeURIComponent(m.link));
+  if (state.active !== m.link) return;
+  if (r.status !== 'success') { toast(r.message || 'Gagal membuka pesan'); return; }
+  showBody(r.data.body || '<p>(kosong)</p>');
+  setCodes(r.data.otp, r.data.verification_link);
 }
 
-const copy = (t) => navigator.clipboard.writeText(t);
+/* polling berantai: tunggu refresh selesai, lalu hitung mundur */
+async function pollLoop(id) {
+  while (id === state.loop) {
+    if (!document.hidden) await refresh();
+    if (id !== state.loop) return;
+    runBar();
+    await sleep(POLL_MS);
+  }
+}
 
-$('gen').onclick = async () => {
+/* ---------- riwayat ---------- */
+function renderHistory() {
+  $('histWrap').hidden = !state.history.length;
+  $('hist').innerHTML = state.history.map((a) =>
+    `<div class="hist-item${a === state.email ? ' on' : ''}" data-a="${esc(a)}">` +
+    `<span>${esc(a)}</span>` +
+    `<button type="button" class="rm" data-rm="${esc(a)}" aria-label="Hapus dari riwayat"><svg class="i"><use href="#i-x"/></svg></button></div>`
+  ).join('');
+}
+function addHistory(a) {
+  state.history = [a, ...state.history.filter((x) => x !== a)].slice(0, 8);
+}
+
+function setEmail(e, active = '') {
+  state.email = e;
+  state.messages = [];
+  state.sig = '';
+  state.seen = new Set();
+  state.active = '';
+  state.pendingOpen = active;
+  state.otp = '';
+  addHistory(e);
+  renderHistory();
+  save();
+
+  $('email').textContent = e;
+  $('addrRow').hidden = false;
+  $('count').textContent = '0 pesan';
+  $('otpBox').hidden = true;
+  $('linkBox').hidden = true;
+  $('viewerWrap').classList.remove('open');
+  $('viewer').dataset.last = '';
+  skeleton();
+  $('live').classList.add('on');
+  $('liveText').textContent = 'Live · ' + POLL_MS / 1000 + ' dtk';
+
+  pollLoop(++state.loop);
+}
+
+/* ---------- actions ---------- */
+async function generate() {
   const qs = new URLSearchParams();
-  if ($('user').value.trim()) qs.set('username', $('user').value.trim());
+  const u = $('user').value.trim();
+  if (u) qs.set('username', u);
   if ($('domain').value) qs.set('domain', $('domain').value);
+  $('gen').disabled = true;
+  $('gen').classList.add('loading');
+  $('genLabel').textContent = 'Membuat…';
   const r = await api('/api/generate?' + qs);
+  $('gen').disabled = false;
+  $('gen').classList.remove('loading');
+  $('genLabel').textContent = 'Buat alamat';
   if (r.status === 'success') setEmail(r.data.email);
-};
-$('use').onclick = () => { const v = $('manual').value.trim().toLowerCase(); if (v.includes('@')) setEmail(v); };
-$('copy').onclick = () => copy(email);
-$('copyOtp').onclick = () => copy($('otp').textContent);
-$('refresh').onclick = refresh;
+  else toast(r.message || 'Gagal membuat alamat');
+}
 
-loadDomains();
+function useManual() {
+  const v = $('manual').value.trim().toLowerCase();
+  if (v.includes('@')) { setEmail(v); $('manual').value = ''; }
+  else toast('Alamat tidak valid');
+}
+
+$('gen').onclick = generate;
+$('use').onclick = useManual;
+$('user').addEventListener('keydown', (e) => { if (e.key === 'Enter') generate(); });
+$('manual').addEventListener('keydown', (e) => { if (e.key === 'Enter') useManual(); });
+$('user').addEventListener('input', save);
+$('domain').addEventListener('change', save);
+$('copy').onclick = () => copy(state.email, 'Alamat');
+$('refresh').onclick = async () => { await refresh(); runBar(); };
+$('copyOtp').onclick = () => copy(state.otp, 'OTP');
+$('copyLink').onclick = () => copy(state.link, 'Link');
+$('closeViewer').onclick = closeViewer;
+$('list').addEventListener('click', (e) => {
+  const el = e.target.closest('.msg');
+  if (el) openMsg(state.messages[el.dataset.i]);
+});
+$('hist').addEventListener('click', (e) => {
+  const rm = e.target.closest('[data-rm]');
+  if (rm) {
+    e.stopPropagation();
+    state.history = state.history.filter((x) => x !== rm.dataset.rm);
+    renderHistory();
+    save();
+    return;
+  }
+  const it = e.target.closest('.hist-item');
+  if (it && it.dataset.a !== state.email) setEmail(it.dataset.a);
+});
+
+/* ---------- init (pulihkan sesi terakhir) ---------- */
+(async function init() {
+  const s = load();
+  state.history = Array.isArray(s.history) ? s.history.slice(0, 8) : [];
+  if (s.user) $('user').value = s.user;
+  renderHistory();
+  if (s.email) setEmail(s.email, s.active || '');
+  loadDomains(s.domain);
+})();
 </script>
 </body>
 </html>
