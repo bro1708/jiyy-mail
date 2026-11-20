@@ -179,6 +179,21 @@ const EmailParser = {
       }
     });
 
+    // URL teks biasa (bukan <a>), mis. email yang isinya hanya "https://contoh.com"
+    const plain = $.root().text().match(/https?:\/\/[^\s<>"')\]]+/gi) || [];
+    for (const raw of plain) {
+      const href = raw.replace(/[.,;:!?]+$/, '');
+      const hl = href.toLowerCase();
+      if (links.some((l) => l.url === href) || ignore.some((j) => hl.includes(j))) continue;
+      let score = 0;
+      if (/token=|code=|key=|verify|activate|confirmation|auth\/links|auth_action/i.test(hl)) score += 10;
+      links.push({ text: href, url: href, score });
+      if (score > best) {
+        best = score;
+        primary = href;
+      }
+    }
+
     links.sort((a, b) => b.score - a.score);
     if (!primary && links.length > 0) primary = links[0].url;
     return { primary_link: primary, all_links: links.map((l) => ({ text: l.text, url: l.url })) };
@@ -325,10 +340,20 @@ async function readMessage(email, linkOrMsgId) {
   const url = link.startsWith(domain) ? `${BASE_URL}/${link}` : `${BASE_URL}/${domain}/${username}/${link}`;
 
   try {
-    const res = await http(url, { Cookie: inboxCookie(e, linkOrMsgId), Referer: `${BASE_URL}/inbox1/` });
-    if (res.status !== 200) return respond('error', null, `Failed to load message (HTTP ${res.status})`, 'HTTP_ERROR');
+    const fetchPage = async (target) => {
+      const res = await http(target, { Cookie: inboxCookie(e, linkOrMsgId), Referer: `${BASE_URL}/inbox1/` });
+      return res.status === 200 ? { $: load(await res.text()), status: 200 } : { $: null, status: res.status };
+    };
 
-    const $ = load(await res.text());
+    // 1) halaman pesan langsung, 2) cadangan: endpoint inbox1 dengan cookie pesan terpilih
+    let page = await fetchPage(url);
+    if (!page.$ || !EmailParser.extractCleanBody(page.$).rawHtml) {
+      const alt = await fetchPage(`${BASE_URL}/inbox1/`);
+      if (alt.$ && EmailParser.extractCleanBody(alt.$).rawHtml) page = alt;
+    }
+    if (!page.$) return respond('error', null, `Failed to load message (HTTP ${page.status})`, 'HTTP_ERROR');
+
+    const $ = page.$;
     let sender = '', subject = '', dateStr = '';
     const headText = $('#mail-summary-head').text() || '';
     for (const line of headText.split('\n')) {
@@ -462,4 +487,3 @@ export default {
     }
   },
 };
-      
