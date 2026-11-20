@@ -1,0 +1,156 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TempMail Dashboard</title>
+<style>
+  :root{--bg:#0d1117;--card:#161b22;--line:#30363d;--txt:#e6edf3;--mut:#8b949e;--acc:#a371f7;--ok:#3fb950;--info:#58a6ff}
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--txt);font:15px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+  .wrap{max-width:900px;margin:0 auto;padding:20px 16px 60px}
+  h1{font-size:22px;margin:8px 0 2px}
+  .sub{color:var(--mut);font-size:13px;margin-bottom:18px}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px;margin-bottom:14px}
+  .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  input,select,button{background:#0d1117;color:var(--txt);border:1px solid var(--line);border-radius:8px;padding:9px 12px;font:inherit}
+  input{flex:1;min-width:120px}
+  button{cursor:pointer}
+  button:hover{border-color:var(--acc)}
+  button.primary{background:var(--acc);border-color:var(--acc);color:#fff;font-weight:600}
+  .email{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:17px;color:var(--acc);word-break:break-all}
+  .badge{display:inline-block;padding:2px 8px;border-radius:99px;font-size:12px;border:1px solid var(--line);color:var(--mut)}
+  .otp{font-family:ui-monospace,monospace;font-size:26px;letter-spacing:3px;color:var(--ok);font-weight:700}
+  .msg{padding:10px 12px;border:1px solid var(--line);border-radius:8px;margin-top:8px;cursor:pointer}
+  .msg:hover{border-color:var(--info)}
+  .msg b{display:block}
+  .msg small{color:var(--mut)}
+  iframe{width:100%;height:420px;border:1px solid var(--line);border-radius:8px;background:#fff;margin-top:10px}
+  a{color:var(--info);word-break:break-all}
+  .hide{display:none}
+  .mut{color:var(--mut)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>📬 TempMail Dashboard</h1>
+  <div class="sub">Powered by generator.email · inbox auto-refresh tiap 5 detik</div>
+
+  <div class="card">
+    <div class="row">
+      <input id="user" placeholder="username (kosongkan = random)">
+      <select id="domain"><option value="">random domain</option></select>
+      <button class="primary" id="gen">Generate</button>
+    </div>
+    <div class="row" style="margin-top:12px">
+      <input id="manual" placeholder="atau masukkan email yang sudah ada">
+      <button id="use">Pakai</button>
+    </div>
+  </div>
+
+  <div class="card hide" id="current">
+    <div class="row" style="justify-content:space-between">
+      <div class="email" id="email"></div>
+      <div class="row">
+        <button id="copy">Copy</button>
+        <button id="refresh">Refresh</button>
+        <span class="badge" id="count">0 pesan</span>
+      </div>
+    </div>
+    <div id="otpBox" class="hide" style="margin-top:12px">
+      <div class="mut">OTP terdeteksi</div>
+      <span class="otp" id="otp"></span> <button id="copyOtp">Copy OTP</button>
+    </div>
+    <div id="linkBox" class="hide" style="margin-top:12px">
+      <div class="mut">Link verifikasi</div>
+      <a id="vlink" target="_blank" rel="noopener noreferrer"></a>
+    </div>
+  </div>
+
+  <div class="card hide" id="inboxCard">
+    <b>Inbox</b>
+    <div id="list"><span class="mut">Belum ada pesan…</span></div>
+    <iframe id="viewer" class="hide" sandbox="" referrerpolicy="no-referrer"></iframe>
+  </div>
+</div>
+
+<script>
+const $ = (id) => document.getElementById(id);
+let email = '', timer = null;
+
+const api = async (path) => (await fetch(path)).json();
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+async function loadDomains() {
+  try {
+    const r = await api('/api/domains');
+    if (r.status === 'success') {
+      r.data.domains.forEach((d) => {
+        const o = document.createElement('option');
+        o.value = d; o.textContent = '@' + d;
+        $('domain').appendChild(o);
+      });
+    }
+  } catch {}
+}
+
+function setEmail(e) {
+  email = e;
+  $('email').textContent = e;
+  $('current').classList.remove('hide');
+  $('inboxCard').classList.remove('hide');
+  $('viewer').classList.add('hide');
+  $('list').innerHTML = '<span class="mut">Menunggu pesan…</span>';
+  clearInterval(timer);
+  refresh();
+  timer = setInterval(refresh, 5000);
+}
+
+async function refresh() {
+  if (!email) return;
+  const r = await api('/api/inbox?email=' + encodeURIComponent(email));
+  if (r.status !== 'success') { $('list').innerHTML = '<span class="mut">' + esc(r.message || 'Error') + '</span>'; return; }
+  const d = r.data;
+  $('count').textContent = d.total_messages + ' pesan';
+
+  $('otpBox').classList.toggle('hide', !d.otp);
+  if (d.otp) $('otp').textContent = d.otp;
+  $('linkBox').classList.toggle('hide', !d.verification_link);
+  if (d.verification_link) { $('vlink').href = d.verification_link; $('vlink').textContent = d.verification_link; }
+
+  if (d.messages.length) {
+    $('list').innerHTML = d.messages.map((m, i) =>
+      `<div class="msg" data-i="${i}"><b>${esc(m.subject || '(tanpa subjek)')}</b><small>${esc(m.from)} · ${esc(m.date)}</small></div>`
+    ).join('');
+    document.querySelectorAll('.msg').forEach((el) => el.onclick = () => openMsg(d.messages[el.dataset.i]));
+  }
+}
+
+async function openMsg(m) {
+  const r = await api('/api/message?email=' + encodeURIComponent(email) + '&link=' + encodeURIComponent(m.link));
+  if (r.status !== 'success') return alert(r.message || 'Gagal membuka pesan');
+  const v = $('viewer');
+  v.classList.remove('hide');
+  v.srcdoc = '<base target="_blank">' + (r.data.body || '<p>(kosong)</p>');
+  if (r.data.otp) { $('otpBox').classList.remove('hide'); $('otp').textContent = r.data.otp; }
+  if (r.data.verification_link) { $('linkBox').classList.remove('hide'); $('vlink').href = r.data.verification_link; $('vlink').textContent = r.data.verification_link; }
+}
+
+const copy = (t) => navigator.clipboard.writeText(t);
+
+$('gen').onclick = async () => {
+  const qs = new URLSearchParams();
+  if ($('user').value.trim()) qs.set('username', $('user').value.trim());
+  if ($('domain').value) qs.set('domain', $('domain').value);
+  const r = await api('/api/generate?' + qs);
+  if (r.status === 'success') setEmail(r.data.email);
+};
+$('use').onclick = () => { const v = $('manual').value.trim().toLowerCase(); if (v.includes('@')) setEmail(v); };
+$('copy').onclick = () => copy(email);
+$('copyOtp').onclick = () => copy($('otp').textContent);
+$('refresh').onclick = refresh;
+
+loadDomains();
+</script>
+</body>
+</html>
