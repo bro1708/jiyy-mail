@@ -596,6 +596,7 @@ async function refresh() {
 
   const d = r.data;
   state.messages = d.messages;
+  state.latestBody = d.body || '';
   $('count').textContent = d.total_messages + ' pesan';
   setCodes(d.otp, d.verification_link);
 
@@ -626,7 +627,9 @@ async function openMsg(m) {
   const r = await api('/api/message?email=' + encodeURIComponent(state.email) + '&link=' + encodeURIComponent(m.link));
   if (state.active !== m.link) return;
   if (r.status !== 'success') { $('viewerBody').classList.add('ready'); toast(r.message || 'Gagal membuka pesan'); return; }
-  showBody(r.data.body || '<p>(kosong)</p>');
+  // pesan terbaru: kalau halaman pesan kosong, pakai isi yang sudah ada di halaman inbox
+  const fallback = state.messages[0]?.link === m.link ? state.latestBody : '';
+  showBody(r.data.body || fallback || '<p>(kosong)</p>');
   setCodes(r.data.otp, r.data.verification_link);
 }
 
